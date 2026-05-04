@@ -16,7 +16,9 @@ export function registerHook(program: Command): void {
     .description('Record a hook event from a Claude Code / Codex hook script')
     .requiredOption('--event <type>', 'Event type: pre-tool | post-tool | stop | start')
     .option('--task <id>', 'Task (session) ID')
+    .option('--session <id>', 'Alias for --task (session ID from Claude Code hooks)')
     .option('--agent <name>', 'Agent name (default: claude)', 'claude')
+    .option('--cwd <path>', 'Project root override (walks up looking for .evolvr)')
     .option('--intent <text>', 'Task intent (for --event start)')
     .option('--tool <name>', 'Tool name (for pre-tool / post-tool)')
     .option('--seq <n>', 'Tool call sequence number', '0')
@@ -30,7 +32,9 @@ export function registerHook(program: Command): void {
     .action(async (opts: {
       event: string;
       task?: string;
+      session?: string;
       agent: string;
+      cwd?: string;
       intent?: string;
       tool?: string;
       seq: string;
@@ -42,9 +46,12 @@ export function registerHook(program: Command): void {
       reflection?: string;
       tokenCost?: string;
     }) => {
+      // --session is an alias for --task (Claude Code hooks use session_id)
+      if (!opts.task && opts.session) opts.task = opts.session;
+
       let evolvr;
       try {
-        evolvr = await buildEvolvr();
+        evolvr = await buildEvolvr(opts.cwd);
       } catch {
         // Silently exit — hooks must not block the agent
         process.exit(0);
@@ -70,8 +77,19 @@ export function registerHook(program: Command): void {
             break;
 
           case 'post-tool': {
-            if (!opts.task || !opts.tool) break;
-            await evolvr.recordToolCall(opts.task, {
+            if (!opts.tool) break;
+            const taskId = opts.task ?? 'unknown';
+            // Ensure a task record exists for this session (auto-create if missing)
+            const existing = await evolvr.getTask(taskId).catch(() => null);
+            if (!existing) {
+              await evolvr.startTask({
+                id: taskId,
+                agent: opts.agent,
+                intent: `session ${taskId}`,
+                session_id: taskId,
+              });
+            }
+            await evolvr.recordToolCall(taskId, {
               seq: Number(opts.seq),
               tool: opts.tool,
               args_hash: opts.argsHash ?? '',
@@ -83,8 +101,11 @@ export function registerHook(program: Command): void {
           }
 
           case 'stop': {
-            if (!opts.task) break;
-            await evolvr.completeTask(opts.task, {
+            const taskId = opts.task ?? 'unknown';
+            // Ensure a task record exists before completing
+            const existing = await evolvr.getTask(taskId).catch(() => null);
+            if (!existing) break; // nothing to complete if no tool calls recorded
+            await evolvr.completeTask(taskId, {
               outcome: (opts.outcome ?? 'success') as Outcome,
               reflection: opts.reflection,
               token_cost: opts.tokenCost ? Number(opts.tokenCost) : undefined,
