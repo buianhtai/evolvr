@@ -1,0 +1,42 @@
+/**
+ * Resolve project root and build an Evolvr instance from config.
+ * Used by every CLI command.
+ */
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import {
+  Evolvr,
+  loadConfig,
+  defaultDbPath,
+  createSqliteAdapter,
+  createPostgresAdapter,
+} from '@evolvr/core';
+
+export async function buildEvolvr(cwd: string = process.cwd()): Promise<Evolvr> {
+  const root = findProjectRoot(cwd);
+  const config = loadConfig(root);
+
+  let adapter;
+  if (config.storage === 'postgres' && config.postgres_url) {
+    adapter = createPostgresAdapter(config.postgres_url);
+  } else {
+    const dbPath = config.sqlite_path ?? defaultDbPath(root);
+    adapter = createSqliteAdapter(dbPath);
+  }
+
+  const evolvr = new Evolvr(adapter, config);
+  await evolvr.init();
+  return evolvr;
+}
+
+function findProjectRoot(cwd: string): string {
+  let dir = resolve(cwd);
+  while (true) {
+    if (existsSync(join(dir, '.evolvr')) || existsSync(join(dir, 'package.json'))) {
+      return dir;
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) return cwd; // reached fs root
+    dir = parent;
+  }
+}

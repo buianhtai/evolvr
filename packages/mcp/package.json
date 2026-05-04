@@ -1,0 +1,24 @@
+{
+  "name": "@evolvr/mcp",
+  "version": "0.1.0",
+  "description": "evolvr MCP server — expose the task journal to any MCP-compatible agent",
+  "type": "module",
+  "bin": {
+    "evolvr-mcp": "./dist/server.js"
+  },
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@evolvr/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}

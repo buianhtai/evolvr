@@ -1,0 +1,32 @@
+{
+  "name": "@evolvr/core",
+  "version": "0.1.0",
+  "description": "evolvr core — task journal, failure classifier, lesson store",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "pg": "^8.13.3",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0"
+  }
+}
